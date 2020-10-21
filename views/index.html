@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" data-framework="jquery">
+
+<head>
+  <meta charset="utf-8">
+  <title>Nested todos • TodoMVC</title>
+  <link rel="stylesheet" href="./../public/css/index.css">
+</head>
+
+<body>
+  <div id="app">
+    <section id="app-view">
+      <header id="header">
+        <nav>
+          <ol class="crumbs"></ol>
+        </nav>
+        <h1>
+          <span class="headline">todos</span>
+          <input class="edit" value="">
+        </h1>
+        <input id="new-todo" placeholder="What needs to be done?" autofocus>
+      </header>
+
+      <section id="main">
+        <input id="toggle-all" type="checkbox">
+        <label for="toggle-all">Mark all as complete</label>
+        <ul id="todo-list"></ul>
+      </section>
+      <footer id="footer"></footer>
+    </section>
+    <footer id="info">
+      <p>Click todo text to zoom in</p>
+      <p>Double-click empty todo fild to edit a todo</p>
+      <p>Part of <a href="http://watchandcode.com">Watch and Code</a> curriculum</p>
+      <p>Inspired by <a href="http://todomvc.com">TodoMVC</a></p>
+    </footer>
+  </div>
+
+  <script src="./../public/js/director.js"></script>
+  <script src="./../public/js/app.js"></script>
+</body>
+
+</html>
