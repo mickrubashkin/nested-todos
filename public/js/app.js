@@ -5,7 +5,7 @@ var ENTER_KEY = 13;
 var ESCAPE_KEY = 27;
 
 var util = {
-  uuid: function () {
+  uuid: function() {
     /*jshint bitwise:false */
     var i, random;
     var uuid = '';
@@ -20,10 +20,10 @@ var util = {
 
     return uuid;
   },
-  pluralize: function (count, word) {
+  pluralize: function(count, word) {
     return count === 1 ? word : word + 's';
   },
-  store: function (namespace, data) {
+  store: function(namespace, data) {
     if (arguments.length > 1) {
       return localStorage.setItem(namespace, JSON.stringify(data));
     } else {
@@ -34,85 +34,97 @@ var util = {
 };
 
 var App = {
-  init: function () {
+  init: function() {
     this.todos = util.store('nested-todos');
 
     this.todoTemplate = function(todo) {
-      var li = document.createElement("li");
+      var li = document.createElement('li');
       if (todo.completed) {
-        li.classList.add("completed");
+        li.classList.add('completed');
       }
-      li.setAttribute("data-id", todo.id);
+      li.setAttribute('data-id', todo.id);
 
-      var view = document.createElement("div");
-      view.classList.add("view");
-
+      var view = document.createElement('div');
+      view.classList.add('view');
       if (todo.children.length) {
-        var expandInput = document.createElement("input");
-        expandInput.classList.add("expand");
-        expandInput.type = "checkbox";
+        var expandInput = document.createElement('input');
+        expandInput.classList.add('expand');
+        expandInput.type = 'checkbox';
         expandInput.checked = todo.expanded;
         view.append(expandInput);
       }
 
-      var toggleInput = document.createElement("input");
-      toggleInput.classList.add("toggle");
-      toggleInput.type = "checkbox";
+      var toggleInput = document.createElement('input');
+      toggleInput.classList.add('toggle');
+      toggleInput.type = 'checkbox';
       toggleInput.checked = todo.completed;
       view.append(toggleInput);
 
-      var label = document.createElement("label");
-      var link = document.createElement("a");
-      link.href = "#/" + todo.id + "/all";
+      var label = document.createElement('label');
+      var link = document.createElement('a');
+      link.href = '#/' + todo.id + '/all';
       link.textContent = todo.title;
       label.append(link);
       view.append(label);
 
-      var btn = document.createElement("button");
-      btn.classList.add("destroy");
+      var btn = document.createElement('button');
+      btn.classList.add('destroy');
       view.append(btn);
-
       li.append(view);
 
-      var editInput = document.createElement("input");
-      editInput.classList.add("edit");
+      var editInput = document.createElement('input');
+      editInput.classList.add('edit');
       editInput.value = todo.title;
       li.append(editInput);
 
-      var ul = document.createElement("ul");
-      ul.classList.add("children");
-
+      var ul = document.createElement('ul');
+      ul.classList.add('children');
       if (todo.expanded) {
         ul.classList.add('expanded');
       }
-
       li.append(ul);
 
       return li;
     };
 
-    this.crumbTemplate = function (parts) {
-      return parts.map(function (part) {
-        return `<li class="crumb"><a href="#/${part.href}/all"><span class="text">${part.text}</span></a></li>`;
+    this.crumbTemplate = function(parts) {
+      return parts.map(function(part) {
+        return `
+          <li class="crumb">
+            <a href="#/${part.href}/all">
+              <span class="text">${part.text}</span>
+            </a>
+          </li>`;
       }).join('');
     };
 
-    this.footerTemplate = function (props) {
+    this.footerTemplate = function(props) {
       return `
         <section>
-          <span id="todo-count"><strong>${props.activeTodoCount}</strong>${props.activeTodoWord} left</span>
+          <span id="todo-count">
+            <strong>${props.activeTodoCount}</strong>
+            ${props.activeTodoWord} left
+          </span>
           <ul id="filters">
             <li>
-              <a class="${props.filter === 'all' ? "selected" : ""}" href="#${props.parentId}/all">All</a>
+              <a class="${props.filter === 'all' ? "selected" : ""}" href="#${props.parentId}/all">
+                All
+              </a>
             </li>
             <li>
-              <a class="${props.filter === 'active' ? "selected" : ""}" href="#${props.parentId}/active">Active</a>
+              <a class="${props.filter === 'active' ? "selected" : ""}" href="#${props.parentId}/active">
+                Active
+              </a>
             </li>
             <li>
-              <a class="${props.filter === 'completed' ? "selected" : ""}" href="#${props.parentId}/completed">Completed</a>
+              <a class="${props.filter === 'completed' ? "selected" : ""}" href="#${props.parentId}/completed">
+                Completed
+              </a>
             </li>
           </ul>
-          ${props.completedTodos ? '<button id="clear-completed">Clear completed</button>' : ''}
+          ${props.completedTodos ?
+          '<button id="clear-completed">Clear completed</button>' :
+          ''}
         </section>
       `;
     };
@@ -120,29 +132,26 @@ var App = {
     this.bindEvents();
 
     new Router({
-      '/:id/:filter': function (id, filter) {
+      '/:id/:filter': function(id, filter) {
         this.filter = filter;
         this.selectedTodoId = id;
         this.render();
       }.bind(this)
     }).init('/home/all');
   },
-  bindEvents: function () {
+  bindEvents: function() {
     var newTodoInput = document.querySelector('#new-todo');
     var toggleAllCheckbox = document.querySelector('#toggle-all');
     var footer = document.querySelector('#footer');
     var todoListUl = document.querySelector('#todo-list');
 
     newTodoInput.addEventListener('keyup', this.create.bind(this));
-
     toggleAllCheckbox.addEventListener('change', this.toggleAll.bind(this));
-
     footer.addEventListener('click', function(e) {
       if (e.target.id === 'clear-completed') {
         this.destroyCompleted(e);
       }
     }.bind(this));
-
     todoListUl.addEventListener('dblclick', function(e) {
       if (e.target.tagName === 'LABEL') {
         this.edit(e);
@@ -172,8 +181,8 @@ var App = {
       if (e.target.className === 'expand') {
         this.expand(e);
       }
-    }.bind(this));    
-    todoListUl.addEventListener('click', function (e) {
+    }.bind(this));
+    todoListUl.addEventListener('click', function(e) {
       if (e.target.tagName === 'A') {
         var id = e.target.closest('li').dataset.id;
         this.id = id;
@@ -181,21 +190,21 @@ var App = {
       }
     }.bind(this));
   },
-  render: function () {
+  render: function() {
     var parent = this.getTodo(this.selectedTodoId);
     var todos = this.getFilteredTodos(parent.children);
 
     // Render header.
     this.renderCrumbs();
-    var headline = document.querySelector("h1 span");
+    var headline = document.querySelector('h1 span');
     headline.textContent = parent.title;
 
     // Render children todos.
     this.renderTodos(parent);
 
-    // Hides todos section if no todos.
+    // Hide todos section if no todos.
     var main = document.querySelector('#main');
-    main.style.display = todos.length > 0 ? "block" : "none";
+    main.style.display = todos.length > 0 ? 'block' : 'none';
 
     var toggleAllCheckbox = document.querySelector('#toggle-all');
     toggleAllCheckbox.checked = this.getActiveTodos(parent.children).length === 0;
@@ -214,20 +223,24 @@ var App = {
     var todos = this.getFilteredTodos(parent.children);
     var parentId = parent.id;
     var selector = '#todo-list';
+
     if (parentId != this.selectedTodoId) {
       selector = `[data-id='${parentId}'] .children`;
     }
+
     var ul = document.querySelector(selector);
     ul.innerHTML = '';
+
     todos.forEach(function(todo) {
       var child = this.todoTemplate(todo);
       ul.append(child);
+
       if (todo.expanded) {
         this.renderTodos(todo);
       }
     }, this);
   },
-  renderCrumbs: function () {
+  renderCrumbs: function() {
     var id = this.selectedTodoId;
     var parent = this.getParentTodo(id);
     var parts = [];
@@ -239,7 +252,7 @@ var App = {
       if (parent.id === 'home') {
         text = 'Home';
       }
-      
+
       parts.unshift({ href: href, text: text });
       parent = this.getParentTodo(parent.id);
     }
@@ -256,7 +269,7 @@ var App = {
     var template = this.crumbTemplate(parts);
     nav.innerHTML = template;
   },
-  renderFooter: function () {
+  renderFooter: function() {
     function countAll(todos, count) {
       for (var i = 0; i < todos.length; i++) {
         var todo = todos[i];
@@ -275,7 +288,7 @@ var App = {
       }
 
       return count;
-    }    
+    }
 
     var parent = this.getTodo(this.selectedTodoId);
     var todos = parent.children;
@@ -295,7 +308,7 @@ var App = {
     footer.style.display = allTodos > 0 ? 'block' : 'none';
     footer.innerHTML = template;
   },
-  toggleAll: function (e) {
+  toggleAll: function(e) {
     var isChecked = e.target.checked;
     var todo = this.getTodo(this.selectedTodoId);
 
@@ -311,29 +324,32 @@ var App = {
     deepToggleAll(todo);
     this.render();
   },
-  getActiveTodos: function (todos) {
-    return todos.filter(function (todo) {
+  getActiveTodos: function(todos) {
+    return todos.filter(function(todo) {
       return !todo.completed;
     });
   },
-  getCompletedTodos: function (todos) {
+  getCompletedTodos: function(todos) {
     // Helper function.
-    // Return true if any todo (or any nested child todo) completed.
+    // Return true if any todo (or any nested child todo) is completed.
     // Otherwise, return false.
     function hasAnyCompletedTodo(todos) {
       for (var i = 0; i < todos.length; i++) {
         var todo = todos[i];
+
         if (todo.completed) {
           return true;
         }
+
         if (todo.children.length > 0) {
           return hasAnyCompletedTodo(todo.children);
         }
       }
+
       return false;
     }
 
-    return todos.filter(function (todo) {
+    return todos.filter(function(todo) {
       // If no children, filter it.
       if (todo.children.length === 0) {
         return todo.completed;
@@ -342,7 +358,7 @@ var App = {
       return hasAnyCompletedTodo(todo.children);
     }, this);
   },
-  getFilteredTodos: function (todos) {
+  getFilteredTodos: function(todos) {
     if (this.filter === 'active') {
       return this.getActiveTodos(todos);
     }
@@ -353,7 +369,7 @@ var App = {
 
     return todos;
   },
-  destroyCompleted: function () {
+  destroyCompleted: function() {
     var parent = this.getTodo(this.selectedTodoId);
 
     // Helper function.
@@ -363,20 +379,18 @@ var App = {
       if (parent.children.length === 0) {
         return;
       }
-
-      parent.children.forEach(function (child, i) {
+      parent.children.forEach(function(child) {
         recur.call(this, child);
       }, this);
     }
 
     var bounded = recur.bind(this);
-
     bounded(parent);
 
     this.filter = 'all';
     this.render();
   },
-  create: function (e) {
+  create: function(e) {
     var inputElement = e.target;
     var val = inputElement.value.trim();
 
@@ -397,13 +411,13 @@ var App = {
 
     this.render();
   },
-  toggle: function (e) {
-    var id = e.target.closest("li").dataset.id;
+  toggle: function(e) {
+    var id = e.target.closest('li').dataset.id;
     var todo = this.getTodo(id);
-    var toggledCompleted = !todo.completed;
+    var completed = !todo.completed;
 
     function deepToggle(todo) {
-      todo.completed = toggledCompleted;
+      todo.completed = completed;
       if (todo.children.length > 0) {
         todo.children.forEach(function(child) {
           deepToggle(child);
@@ -420,15 +434,14 @@ var App = {
     todo.expanded = !todo.expanded;
     this.render();
   },
-  edit: function (e) {
+  edit: function(e) {
     var targetElement = e.target;
-    var closestLiElement = targetElement.closest("li");
+    var closestLiElement = targetElement.closest('li');
     var inputElement = closestLiElement.querySelector('.edit');
-
     closestLiElement.className = 'editing';
     inputElement.focus();
   },
-  editKeyup: function (e) {
+  editKeyup: function(e) {
     if (e.which === ENTER_KEY) {
       e.target.blur();
     }
@@ -438,7 +451,7 @@ var App = {
       e.target.blur();
     }
   },
-  update: function (e) {
+  update: function(e) {
     var el = e.target;
     var id = e.target.closest('li').dataset.id;
     var todo = this.getTodo(id);
@@ -457,7 +470,7 @@ var App = {
 
     this.render();
   },
-  destroy: function (e) {
+  destroy: function(e) {
     var id = e.target.closest('li').dataset.id
     var parent = this.getParentTodo(id);
     var todos = parent.children;
@@ -467,26 +480,26 @@ var App = {
 
   //* Helper methods.
   // Gets parent todo by child.id.
-  getParentTodo: function (id) {
+  getParentTodo: function(id) {
     var result;
 
     function recur(child, parent) {
       if (child.id === id) {
         result = parent;
       } else {
-        child.children.forEach(function (todo) {
+        child.children.forEach(function(todo) {
           recur(todo, child);
         });
       }
     }
 
-    this.todos.children.forEach(function (child) {
+    this.todos.children.forEach(function(child) {
       recur(child, this.todos);
     }, this);
 
     return result;
   },
-  
+
   // Get todo by id.
   getTodo: function(id) {
     var result;
@@ -495,7 +508,7 @@ var App = {
       if (tree.id === id) {
         result = tree;
       } else {
-        tree.children.forEach(function (child) {
+        tree.children.forEach(function(child) {
           recur(child);
         });
       }
