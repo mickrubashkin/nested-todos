@@ -28,7 +28,7 @@ var util = {
       return localStorage.setItem(namespace, JSON.stringify(data));
     } else {
       var store = localStorage.getItem(namespace);
-      return (store && JSON.parse(store)) || { id: 'home', title: 'Nested todos', children: [], completed: false };
+      return (store && JSON.parse(store)) || { id: 'home', title: 'nested todos', children: [], completed: false, parentId: null };
     }
   }
 };
@@ -134,7 +134,7 @@ var App = {
     new Router({
       '/:id/:filter': function(id, filter) {
         this.filter = filter;
-        this.selectedTodoId = id;
+        this.focusedTodoId = id;
         this.render();
       }.bind(this)
     }).init('/home/all');
@@ -191,7 +191,7 @@ var App = {
     }.bind(this));
   },
   render: function() {
-    var parent = this.getTodo(this.selectedTodoId);
+    var parent = this.getTodo(this.focusedTodoId);
     var todos = this.getFilteredTodos(parent.children);
 
     // Render header and crumbs navigation
@@ -224,7 +224,7 @@ var App = {
     var parentId = parent.id;
     var selector = '#todo-list';
 
-    if (parentId !== this.selectedTodoId) {
+    if (parentId !== this.focusedTodoId) {
       selector = `[data-id='${parentId}'] .children`;
     }
 
@@ -234,15 +234,15 @@ var App = {
     todos.forEach(function(todo) {
       var child = this.todoTemplate(todo);
       ul.append(child);
-      
+
       if (todo.expanded) {
         this.renderTodos(todo);
       }
     }, this);
   },
   renderCrumbs: function() {
-    var id = this.selectedTodoId;
-    var parent = this.getParentTodo(id);
+    var focusedTodo = this.getTodo(this.focusedTodoId);
+    var parent = this.getTodo(focusedTodo.parentId);
     var parts = [];
 
     while (parent) {
@@ -254,7 +254,7 @@ var App = {
       }
 
       parts.unshift({ href: href, text: text });
-      parent = this.getParentTodo(parent.id);
+      parent = this.getTodo(parent.parentId);
     }
 
     // Shortens rendered crumbs if more than 4 items
@@ -293,7 +293,7 @@ var App = {
       return count;
     }
 
-    var parent = this.getTodo(this.selectedTodoId);
+    var parent = this.getTodo(this.focusedTodoId);
     var todos = parent.children;
     var allTodos = countAll(todos, 0);
     var completedTodos = countCompleted(todos, 0);
@@ -304,7 +304,7 @@ var App = {
       activeTodoWord: util.pluralize(activeTodos, 'item'),
       completedTodos: completedTodos,
       filter: this.filter,
-      parentId: this.selectedTodoId
+      parentId: this.focusedTodoId
     });
 
     var footer = document.querySelector('#footer');
@@ -315,7 +315,7 @@ var App = {
   },
   toggleAll: function(e) {
     var isChecked = e.target.checked;
-    var todo = this.getTodo(this.selectedTodoId);
+    var todo = this.getTodo(this.focusedTodoId);
 
     function deepToggleAll(todo) {
       todo.completed = isChecked;
@@ -361,7 +361,7 @@ var App = {
       }
       // If any completed nested todo, filter it
       return hasAnyCompletedTodo(todo.children);
-    }, this);
+    });
   },
   getFilteredTodos: function(todos) {
     if (this.filter === 'active') {
@@ -375,24 +375,23 @@ var App = {
     return todos;
   },
   destroyCompleted: function() {
-    var parent = this.getTodo(this.selectedTodoId);
-
     // Helper function.
     // Travers through all nested todos, and filters out all completed todos.
-    function travers(parent) {
-      parent.children = this.getActiveTodos(parent.children);
-      if (parent.children.length === 0) {
+    function travers(todo) {
+      todo.children = this.getActiveTodos(todo.children);
+      if (todo.children.length === 0) {
         return;
       }
-      parent.children.forEach(function(child) {
+      todo.children.forEach(function(child) {
         travers.call(this, child);
       }, this);
     }
 
-    var boundedTravers = travers.bind(this);
-    boundedTravers(parent);
+    var root = this.getTodo('home');
+    travers.bind(this)(root);
 
     this.filter = 'all';
+    this.focusedTodoId = 'home';
     this.render();
   },
   create: function(e) {
@@ -403,13 +402,14 @@ var App = {
       return;
     }
 
-    var parent = this.getTodo(this.selectedTodoId);
+    var parent = this.getTodo(this.focusedTodoId);
     parent.children.push({
       id: util.uuid(),
       title: val,
       completed: false,
       expanded: false,
-      children: []
+      children: [],
+      parentId: parent.id
     });
 
     inputElement.value = '';
@@ -477,37 +477,16 @@ var App = {
     this.render();
   },
   destroy: function(e) {
-    var id = e.target.closest('li').dataset.id
-    var parent = this.getParentTodo(id);
+    var id = e.target.closest('li').dataset.id;
+    var todo = this.getTodo(id);
+    var parent = this.getTodo(todo.parentId);
     var todos = parent.children;
     todos.splice(this.indexFromId(todos, id), 1);
     this.render();
   },
 
   // Helper methods
-  // Get parent by child's id
-  getParentTodo: function(id) {
-    var result;
-
-    function findParent(child, parent) {
-      if (child.id === id) {
-        result = parent;
-        return parent;
-      } else {
-        child.children.forEach(function(todo) {
-          findParent(todo, child);
-        });
-      }
-    }
-
-    this.todos.children.forEach(function(child) {
-      findParent(child, this.todos);
-    }, this);
-
-    return result;
-  },
-
-  // Get todo by id
+  // Gets todo by id
   getTodo: function(id) {
     var result;
 

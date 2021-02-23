@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Very simple in-browser unit-test library, with zero deps.
  *
@@ -39,7 +41,7 @@
  */
 
 var TinyTest = {
-  run: function (tests) {
+  run: function(tests) {
     var failures = 0;
 
     this.render();
@@ -64,37 +66,37 @@ var TinyTest = {
     this.renderStats(tests, failures);
 
     // setTimeout(function () { // Give document a chance to complete
-      // if (window.document && document.body) {
-        var body = document.body;
-        body.setAttribute('style', 'display: flex; width: 100vw; max-width: 100vw; margin: 0;');
-      // }
+    // if (window.document && document.body) {
+    var body = document.body;
+    body.setAttribute('style', 'display: flex; width: 100vw; max-width: 100vw; margin: 0;');
+    // }
     // }, 0);
   },
 
-  fail: function (msg) {
+  fail: function(msg) {
     throw new Error('fail(): ' + msg);
   },
 
-  assert: function (value, msg) {
+  assert: function(value, msg) {
     if (!value) {
       throw new Error('assert(): ' + msg);
     }
   },
 
-  assertEquals: function (expected, actual) {
+  assertEquals: function(expected, actual) {
     if (expected != actual) {
       throw new Error('assertEquals() "' + expected + '" != "' + actual + '"');
     }
   },
 
-  assertStrictEquals: function (expected, actual) {
+  assertStrictEquals: function(expected, actual) {
     if (expected !== actual) {
       throw new Error('assertStrictEquals() "' + expected + '" !== "' + actual + '"');
     }
   },
-  
+
   // Render
-  render: function () {
+  render: function() {
     var testsView = document.createElement('div');
     testsView.id = 'tests';
     testsView.style.margin = '10px 0 10px 10px';
@@ -157,7 +159,7 @@ var TinyTest = {
     var summaryString = 'Ran ' + numberOfTests + ' tests: '
       + successes + ' successes, '
       + failures + ' failures.';
-    
+
     var testsSummary = document.querySelector('#tests-summary');
     testsSummary.textContent = summaryString;
     testsSummary.style.textAlign = 'center';
