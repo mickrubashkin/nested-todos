@@ -28,7 +28,7 @@ var util = {
       return localStorage.setItem(namespace, JSON.stringify(data));
     } else {
       var store = localStorage.getItem(namespace);
-      return (store && JSON.parse(store)) || { id: 'home', title: 'nested-todos', children: [] };
+      return (store && JSON.parse(store)) || { id: 'home', title: 'Nested todos', children: [], completed: false };
     }
   }
 };
@@ -46,7 +46,7 @@ var App = {
 
       var view = document.createElement('div');
       view.classList.add('view');
-      if (todo.children.length) {
+      if (todo.children.length > 0) {
         var expandInput = document.createElement('input');
         expandInput.classList.add('expand');
         expandInput.type = 'checkbox';
@@ -107,17 +107,17 @@ var App = {
           </span>
           <ul id="filters">
             <li>
-              <a class="${props.filter === 'all' ? "selected" : ""}" href="#${props.parentId}/all">
+              <a class="${props.filter === 'all' ? 'selected' : ''}" href="#${props.parentId}/all">
                 All
               </a>
             </li>
             <li>
-              <a class="${props.filter === 'active' ? "selected" : ""}" href="#${props.parentId}/active">
+              <a class="${props.filter === 'active' ? 'selected' : ''}" href="#${props.parentId}/active">
                 Active
               </a>
             </li>
             <li>
-              <a class="${props.filter === 'completed' ? "selected" : ""}" href="#${props.parentId}/completed">
+              <a class="${props.filter === 'completed' ? 'selected' : ''}" href="#${props.parentId}/completed">
                 Completed
               </a>
             </li>
@@ -194,29 +194,29 @@ var App = {
     var parent = this.getTodo(this.selectedTodoId);
     var todos = this.getFilteredTodos(parent.children);
 
-    // Render header.
+    // Render header and crumbs navigation
     this.renderCrumbs();
     var headline = document.querySelector('h1 span');
     headline.textContent = parent.title;
 
-    // Render children todos.
+    // Render children
     this.renderTodos(parent);
 
-    // Hide todos section if no todos.
+    // Hide todos' section element if no todos
     var main = document.querySelector('#main');
     main.style.display = todos.length > 0 ? 'block' : 'none';
 
     var toggleAllCheckbox = document.querySelector('#toggle-all');
     toggleAllCheckbox.checked = this.getActiveTodos(parent.children).length === 0;
 
-    // Set focus to the new-todo input.
+    // Set focus to the new-todo input
     var newTodoInput = document.querySelector('#new-todo');
     newTodoInput.focus();
 
-    // Renders footer.
+    // Renders footer
     this.renderFooter();
 
-    // Store todos in the localStorage.
+    // Store todos in the localStorage
     util.store('nested-todos', this.todos);
   },
   renderTodos: function(parent) {
@@ -224,7 +224,7 @@ var App = {
     var parentId = parent.id;
     var selector = '#todo-list';
 
-    if (parentId != this.selectedTodoId) {
+    if (parentId !== this.selectedTodoId) {
       selector = `[data-id='${parentId}'] .children`;
     }
 
@@ -234,7 +234,7 @@ var App = {
     todos.forEach(function(todo) {
       var child = this.todoTemplate(todo);
       ul.append(child);
-
+      
       if (todo.expanded) {
         this.renderTodos(todo);
       }
@@ -257,6 +257,7 @@ var App = {
       parent = this.getParentTodo(parent.id);
     }
 
+    // Shortens rendered crumbs if more than 4 items
     if (parts.length > 4) {
       var placeholder = {
         href: parts[parts.length - 2].href,
@@ -270,6 +271,7 @@ var App = {
     nav.innerHTML = template;
   },
   renderFooter: function() {
+    // Calculates numbers of all todos
     function countAll(todos, count) {
       for (var i = 0; i < todos.length; i++) {
         var todo = todos[i];
@@ -280,6 +282,7 @@ var App = {
       return count;
     }
 
+    // Calculates numbers of completed todos
     function countCompleted(todos, count) {
       for (var i = 0; i < todos.length; i++) {
         var todo = todos[i];
@@ -303,8 +306,10 @@ var App = {
       filter: this.filter,
       parentId: this.selectedTodoId
     });
+
     var footer = document.querySelector('#footer');
 
+    // Hides footer if no todos
     footer.style.display = allTodos > 0 ? 'block' : 'none';
     footer.innerHTML = template;
   },
@@ -331,8 +336,8 @@ var App = {
   },
   getCompletedTodos: function(todos) {
     // Helper function.
-    // Return true if any todo (or any nested child todo) is completed.
-    // Otherwise, return false.
+    // Returns true if any todo (or any nested child todo) is completed.
+    // Otherwise, returns false.
     function hasAnyCompletedTodo(todos) {
       for (var i = 0; i < todos.length; i++) {
         var todo = todos[i];
@@ -354,7 +359,7 @@ var App = {
       if (todo.children.length === 0) {
         return todo.completed;
       }
-      // If it has any completed nested todo, filter it
+      // If any completed nested todo, filter it
       return hasAnyCompletedTodo(todo.children);
     }, this);
   },
@@ -373,19 +378,19 @@ var App = {
     var parent = this.getTodo(this.selectedTodoId);
 
     // Helper function.
-    // It travers through all nested todos, and filters out all completed todos.
-    function recur(parent) {
+    // Travers through all nested todos, and filters out all completed todos.
+    function travers(parent) {
       parent.children = this.getActiveTodos(parent.children);
       if (parent.children.length === 0) {
         return;
       }
       parent.children.forEach(function(child) {
-        recur.call(this, child);
+        travers.call(this, child);
       }, this);
     }
 
-    var bounded = recur.bind(this);
-    bounded(parent);
+    var boundedTravers = travers.bind(this);
+    boundedTravers(parent);
 
     this.filter = 'all';
     this.render();
@@ -416,6 +421,7 @@ var App = {
     var todo = this.getTodo(id);
     var completed = !todo.completed;
 
+    // Toggle all children todos
     function deepToggle(todo) {
       todo.completed = completed;
       if (todo.children.length > 0) {
@@ -478,47 +484,48 @@ var App = {
     this.render();
   },
 
-  //* Helper methods.
-  // Gets parent todo by child.id.
+  // Helper methods
+  // Get parent by child's id
   getParentTodo: function(id) {
     var result;
 
-    function recur(child, parent) {
+    function findParent(child, parent) {
       if (child.id === id) {
         result = parent;
+        return parent;
       } else {
         child.children.forEach(function(todo) {
-          recur(todo, child);
+          findParent(todo, child);
         });
       }
     }
 
     this.todos.children.forEach(function(child) {
-      recur(child, this.todos);
+      findParent(child, this.todos);
     }, this);
 
     return result;
   },
 
-  // Get todo by id.
+  // Get todo by id
   getTodo: function(id) {
     var result;
 
-    function recur(tree) {
-      if (tree.id === id) {
-        result = tree;
+    function findTodo(todo) {
+      if (todo.id === id) {
+        result = todo;
       } else {
-        tree.children.forEach(function(child) {
-          recur(child);
+        todo.children.forEach(function(child) {
+          findTodo(child);
         });
       }
     }
 
-    recur(this.todos);
+    findTodo(this.todos);
     return result;
   },
 
-  // Get index in parent.children array from the child.id.
+  // Get todo's index in parent.children array by id
   indexFromId: function(todos, id) {
     var i = todos.length;
 
@@ -529,4 +536,5 @@ var App = {
     }
   }
 };
+
 App.init();
