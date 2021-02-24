@@ -5,19 +5,26 @@ var app = this.App;
 var utils = {
   clearApp: function() {
     app.filter = 'all';
-    app.id = 'home';
-    app.focusedTodoId = 'home';
-    app.todos = {
-      id: 'home',
+    app.focusedTodoId = 'root';
+    app.nestedTodos = {
+      id: 'root',
       title: 'nested todos',
       completed: false,
+      expanded: false,
       children: [],
       parentId: null
     };
-    window.location.hash = '#/home/all';
+
+    localStorage.clear();
+    localStorage.setItem('nested-todos', JSON.stringify(app.nestedTodos));
+    location.hash = '#/root/all';
     app.render();
   },
-  populateTodos: function(number, title = 'test') {
+  populateTodos: function(number, title) {
+    if (!title) {
+      title = 'test';
+    }
+
     var newTodoInput = document.querySelector('#new-todo');
     for (var i = 1; i <= number; i++) {
       newTodoInput.value = title + ': todo' + i;
@@ -30,7 +37,7 @@ var utils = {
       return localStorage.setItem(namespace, JSON.stringify(data));
     } else {
       var store = localStorage.getItem(namespace);
-      return (store && JSON.parse(store)) || { id: 'home', title: 'nested todos', children: [], completed: false, parentId: null };
+      return (store && JSON.parse(store)) || { id: 'root', title: 'nested todos', children: [], completed: false, parentId: null };
     }
   }
 };
@@ -41,59 +48,69 @@ tests({
   '': function() { },
   'STORAGE (2 tests)': function() { },
   '   1. It should store todos in the localStorage': function() {
+    var storedData;
+
     utils.clearApp();
-    utils.populateTodos(1, 'storage test');
+    storedData = JSON.parse(localStorage.getItem('nested-todos'));
+    eq(storedData.id, 'root');
+    eq(storedData.children.length, 0);
+    eq(storedData.parentId, null);
+
+    utils.populateTodos(3, 'storage test');
 
     // Get todo from the local storage.
-    var project = JSON.parse(localStorage.getItem('nested-todos'));
-    var todos = project.children;
+    storedData = JSON.parse(localStorage.getItem('nested-todos'));
+    var todos = storedData.children;
 
     todos.forEach(function(todo, i) {
       eq(todo.title, 'storage test: todo' + (i + 1));
     });
   },
   '   2. It should retreive todos from the localStorage': function() {
-    utils.clearApp();
-    eq(app.todos.children.length, 0);
+    // var storedData;
+    // utils.clearApp();
+    // storedData = JSON.parse(localStorage.getItem('nested-todos'));
+    // eq(app.nestedTodos, storedData);
+    // eq(storedData.id, 'home');
+    // eq(storedData.children.length, 0);
+    // eq(storedData.parentId, null);
+    localStorage.clear();
+    app.nestedTodos = null;
 
     // Populate local storage with test todos.
-    var todos = [
-      {
-        id: '1',
-        title: 'storage test2: todo1',
-        completed: false,
-        expanded: false,
-        children: [],
-        parentId: 'home'
-      },
-      {
-        id: '1',
-        title: 'storage test2: todo2',
-        completed: true,
-        expanded: false,
-        children: [],
-        parentId: 'home'
-      },
-    ];
-
-    var parent = {
-      id: 'home',
-      title: 'Parent',
+    var data = {
+      id: 'root',
+      title: 'Home',
+      children: [
+        {
+          id: '1',
+          title: 'child 1',
+          children: [],
+          completed: true,
+          expanded: false,
+          parentTodoId: 'root'
+        },
+        {
+          id: '2',
+          title: 'child 2',
+          children: [],
+          completed: false,
+          expanded: false,
+          parentTodoId: 'root'
+        },
+      ],
       completed: false,
       expanded: false,
-      children: todos,
       parentId: null
     };
 
-    localStorage.setItem('nested-todos', JSON.stringify(parent));
-
-    // Retrieve todos from the local storage and render
-    app.todos = utils.store('nested-todos');
+    localStorage.setItem('nested-todos', JSON.stringify(data));
+    app.nestedTodos = utils.store('nested-todos');
     app.render();
 
-    eq(app.todos.children.length, 2);
-    eq(app.todos.children[0].title, 'storage test2: todo1');
-    eq(app.todos.children[1].title, 'storage test2: todo2');
+    eq(app.nestedTodos.children.length, 2);
+    eq(app.nestedTodos.children[0].title, 'child 1');
+    eq(app.nestedTodos.children[1].title, 'child 2');
   },
 
   ' ': function() { },
@@ -107,7 +124,7 @@ tests({
   },
   '   2.  It should create a todo': function() {
     utils.clearApp();
-    var todos = app.todos.children;
+    var todos = app.nestedTodos.children;
     eq(todos.length, 0);
 
     utils.populateTodos(1, 'create single todo test');
@@ -118,23 +135,23 @@ tests({
   '   3.  It should update todo (MANUAL TEST REQUIRED)': function() {
     utils.clearApp();
     utils.populateTodos(1, 'Dbl click me to update!');
-    eq(app.todos.children.length, 1);
+    eq(app.nestedTodos.children.length, 1);
 
     // TODO: how to test user dblclick and todo text update?
   },
   '   4.  It should toggle todo': function() {
     utils.clearApp();
     utils.populateTodos(1);
-    eq(app.todos.children[0].completed, false);
+    eq(app.nestedTodos.children[0].completed, false);
 
     var toggle = document.querySelector('input.toggle');
     toggle.click();
-    eq(app.todos.children[0].completed, true);
+    eq(app.nestedTodos.children[0].completed, true);
   },
   '   5.  It should toggle all todos': function() {
     utils.clearApp();
     utils.populateTodos(3, 'toggle-all single todo test');
-    var todos = app.todos.children;
+    var todos = app.nestedTodos.children;
     todos.forEach(function(todo) {
       eq(todo.completed, false);
     });
@@ -149,16 +166,16 @@ tests({
   '   6.  It should delete todo': function() {
     utils.clearApp();
     utils.populateTodos(1, 'destroy single todo test');
-    eq(app.todos.children.length, 1);
+    eq(app.nestedTodos.children.length, 1);
 
     var destroyBtn = document.querySelector('.destroy');
     destroyBtn.click();
-    eq(app.todos.children.length, 0);
+    eq(app.nestedTodos.children.length, 0);
   },
   '   7.  It should delete all completed todos': function() {
     utils.clearApp();
     utils.populateTodos(5, 'destroy single todo test');
-    var todos = app.todos.children;
+    var todos = app.nestedTodos.children;
     todos.forEach(function(todo, i) {
       eq(todo.completed, false);
     });
@@ -172,17 +189,17 @@ tests({
 
     var clearCompleted = document.querySelector('#clear-completed');
     clearCompleted.click();
-    eq(app.todos.children.length, 0);
+    eq(app.nestedTodos.children.length, 0);
   },
   '   8.  It should filter completed todos': function() {
     utils.clearApp();
     utils.populateTodos(3, 'filter competed todos test');
-    eq(app.todos.children.length, 3);
+    eq(app.nestedTodos.children.length, 3);
     var all = document.querySelector('#footer ul li:nth-child(1) a');
     var completed = document.querySelector('#footer ul li:nth-child(3) a');
 
     var toggleSecondTodo = document.querySelector('#todo-list li:nth-child(2) .toggle');
-    app.todos.children[1].completed = !toggleSecondTodo.click();
+    app.nestedTodos.children[1].completed = !toggleSecondTodo.click();
     app.filter = 'completed';
     completed.click();
     app.render();
@@ -192,7 +209,7 @@ tests({
       return todo.dataset.id;
     });
 
-    var todos = app.todos.children;
+    var todos = app.nestedTodos.children;
     var completedTodosId = todos.
       filter(function(todo) { return todo.completed; }).
       map(function(todo) { return todo.id; });
@@ -206,12 +223,12 @@ tests({
   '   9.  It should filter active todos': function() {
     utils.clearApp();
     utils.populateTodos(3, 'filter competed todos test');
-    eq(app.todos.children.length, 3);
+    eq(app.nestedTodos.children.length, 3);
     var all = document.querySelector('#footer ul li:nth-child(1) a');
     var active = document.querySelector('#footer ul li:nth-child(2) a');
 
     var toggleSecondTodo = document.querySelector('#todo-list li:nth-child(2) .toggle');
-    app.todos.children[1].completed = !toggleSecondTodo.click();
+    app.nestedTodos.children[1].completed = !toggleSecondTodo.click();
     app.filter = 'active';
     active.click();
     app.render();
@@ -221,7 +238,7 @@ tests({
       return todo.dataset.id;
     });
 
-    var todos = app.todos.children;
+    var todos = app.nestedTodos.children;
     var activeTodosId = todos.
       filter(function(todo) { return !todo.completed; }).
       map(function(todo) { return todo.id; });
@@ -236,13 +253,13 @@ tests({
   '   10. It should filter all todos': function() {
     utils.clearApp();
     utils.populateTodos(3, 'filter competed todos test');
-    eq(app.todos.children.length, 3);
+    eq(app.nestedTodos.children.length, 3);
 
     var all = document.querySelector('#footer ul li:nth-child(1) a');
     var active = document.querySelector('#footer ul li:nth-child(2) a');
     var toggleSecondTodo = document.querySelector('#todo-list li:nth-child(2) .toggle');
 
-    app.todos.children[1].completed = !toggleSecondTodo.click();
+    app.nestedTodos.children[1].completed = !toggleSecondTodo.click();
     app.filter = 'active';
     active.click();
     app.render();
@@ -255,7 +272,7 @@ tests({
       return todo.dataset.id;
     });
 
-    var todos = app.todos.children;
+    var todos = app.nestedTodos.children;
     var allTodosId = todos.map(function(todo) {
       return todo.id;
     });
@@ -273,7 +290,7 @@ tests({
   '   1.  It should render focused todo view when click on the todo title.': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var children = parentTodo.children;
     var headline = document.querySelector('#header .headline');
     eq(children.length, 0);
@@ -282,13 +299,14 @@ tests({
     var todoLink = document.querySelector('#todo-list li label a');
     app.focusedTodoId = parentTodo.id;
     todoLink.click();
+    app.render();
     headline = document.querySelector('#header .headline');
     eq(headline.textContent, 'parent: todo1');
   },
   '   2.  It should create nested todo.': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var children = parentTodo.children;
     eq(children.length, 0);
 
@@ -304,7 +322,7 @@ tests({
   '   3.  It should update nested todo (MANUAL TEST REQUIRED: both in focused view and expanded view).': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var children = parentTodo.children;
 
     var todoLink = document.querySelector('#todo-list li label a');
@@ -319,7 +337,7 @@ tests({
   '   4.  It should toggle nested todo.': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var children = parentTodo.children;
 
     var todoLink = document.querySelector('#todo-list li label a');
@@ -339,7 +357,7 @@ tests({
   '   5.  It should delete nested todo.': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var children = parentTodo.children;
 
     var todoLink = document.querySelector('#todo-list li label a');
@@ -351,12 +369,13 @@ tests({
 
     eq(children.length, 1);
     destroyBtn.click();
+
     eq(children.length, 0);
   },
   '   6.  It should expand todo children if they exist and if expand btn clicked.': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
 
     var todoLink = document.querySelector('#todo-list li label a');
     app.focusedTodoId = parentTodo.id;
@@ -364,7 +383,7 @@ tests({
 
     utils.populateTodos(1, 'child');
     var homeLink = document.querySelector('#header .crumbs li:nth-child(1) a');
-    app.focusedTodoId = 'home';
+    app.focusedTodoId = 'root';
     homeLink.click();
     app.render();
 
@@ -382,7 +401,7 @@ tests({
   '   7.  It should toggle all todos (with nested children).': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var children = parentTodo.children;
 
     var todoLink = document.querySelector('#todo-list li label a');
@@ -391,7 +410,7 @@ tests({
 
     utils.populateTodos(1, 'child');
     var homeLink = document.querySelector('#header .crumbs li:nth-child(1) a');
-    app.focusedTodoId = 'home';
+    app.focusedTodoId = 'root';
     homeLink.click();
     app.render();
 
@@ -412,7 +431,7 @@ tests({
   '   8.  It should toggle children if parent toggled.': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var children = parentTodo.children;
 
     var todoLink = document.querySelector('#todo-list li label a');
@@ -421,7 +440,7 @@ tests({
 
     utils.populateTodos(1, 'child');
     var homeLink = document.querySelector('#header .crumbs li:nth-child(1) a');
-    app.focusedTodoId = 'home';
+    app.focusedTodoId = 'root';
     homeLink.click();
     app.render();
 
@@ -436,7 +455,7 @@ tests({
   '   9.  It should delete children if parent deleted.': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var children = parentTodo.children;
 
     var todoLink = document.querySelector('#todo-list li label a');
@@ -445,11 +464,11 @@ tests({
 
     utils.populateTodos(1, 'child');
     var homeLink = document.querySelector('#header .crumbs li:nth-child(1) a');
-    app.focusedTodoId = 'home';
+    app.focusedTodoId = 'root';
     homeLink.click();
     app.render();
 
-    eq(app.todos.children.length, 1);
+    eq(app.nestedTodos.children.length, 1);
     eq(children.length, 1);
 
     var toggleAll = document.querySelector('#toggle-all');
@@ -457,12 +476,12 @@ tests({
 
     var destroyCompleted = document.querySelector('#footer #clear-completed');
     destroyCompleted.click();
-    eq(app.todos.children.length, 0);
+    eq(app.nestedTodos.children.length, 0);
   },
   '   10. It should handle crumbs navigation.': function() {
     utils.clearApp();
     utils.populateTodos(1, 'parent');
-    var parentTodo = app.todos.children[0];
+    var parentTodo = app.nestedTodos.children[0];
     var parentTodoId = parentTodo.id;
     var children = parentTodo.children;
 
@@ -491,7 +510,7 @@ tests({
     renderedTodo = document.querySelector('#todo-list .view label a');
     eq(renderedTodo.textContent, 'child: todo1');
 
-    app.focusedTodoId = 'home';
+    app.focusedTodoId = 'root';
     homeCrumb.click();
     app.render();
     renderedTodo = document.querySelector('#todo-list .view label a');

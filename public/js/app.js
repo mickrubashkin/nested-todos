@@ -1,4 +1,12 @@
 /* global Router */
+
+// TODO: Hide App and util into IIFE
+// TODO: It should expand parent todo and display its completed children when clicked 'Completed'
+// TODO: It should display completed parent with uncompleted child when clicked 'Active'
+
+// MAYBE: Add expandAll button left to the newTodoInput
+// MAYBE: Handle correct view when completed parent with some uncompleted child
+
 'use strict';
 
 var ENTER_KEY = 13;
@@ -28,15 +36,24 @@ var util = {
       return localStorage.setItem(namespace, JSON.stringify(data));
     } else {
       var store = localStorage.getItem(namespace);
-      return (store && JSON.parse(store)) || { id: 'home', title: 'nested todos', children: [], completed: false, parentId: null };
+      return (store && JSON.parse(store)) ||
+      {
+        id: 'root',
+        title: 'nested todos',
+        children: [],
+        completed: false,
+        expanded: false,
+        parentId: null
+      };
     }
+  },
+  setHash: function(hash) {
+    location.hash = hash;
   }
 };
 
 var App = {
   init: function() {
-    this.todos = util.store('nested-todos');
-
     this.todoTemplate = function(todo) {
       var li = document.createElement('li');
       if (todo.completed) {
@@ -91,7 +108,7 @@ var App = {
       return parts.map(function(part) {
         return `
           <li class="crumb">
-            <a href="#/${part.href}/all">
+            <a href="${part.href}">
               <span class="text">${part.text}</span>
             </a>
           </li>`;
@@ -107,17 +124,17 @@ var App = {
           </span>
           <ul id="filters">
             <li>
-              <a class="${props.filter === 'all' ? 'selected' : ''}" href="#${props.parentId}/all">
+              <a class="${props.filter === 'all' ? 'selected' : ''}" href="#/${props.parentId}/all">
                 All
               </a>
             </li>
             <li>
-              <a class="${props.filter === 'active' ? 'selected' : ''}" href="#${props.parentId}/active">
+              <a class="${props.filter === 'active' ? 'selected' : ''}" href="#/${props.parentId}/active">
                 Active
               </a>
             </li>
             <li>
-              <a class="${props.filter === 'completed' ? 'selected' : ''}" href="#${props.parentId}/completed">
+              <a class="${props.filter === 'completed' ? 'selected' : ''}" href="#/${props.parentId}/completed">
                 Completed
               </a>
             </li>
@@ -129,21 +146,37 @@ var App = {
       `;
     };
 
+    this.nestedTodos = util.store('nested-todos');
     this.bindEvents();
 
-    new Router({
-      '/:id/:filter': function(id, filter) {
-        this.filter = filter;
-        this.focusedTodoId = id;
-        this.render();
-      }.bind(this)
-    }).init('/home/all');
+    // Roater approach
+    // new Router({
+    //   '/:id/:filter': function(id, filter) {
+    //     this.filter = filter;
+    //     this.focusedTodoId = id;
+    //     this.render();
+    //   }.bind(this)
+    // }).init('/root/all');
+
+    this.filter = 'all';
+    this.focusedTodoId = 'root';
+    util.setHash('#/root/all');
+    this.render();
   },
   bindEvents: function() {
     var newTodoInput = document.querySelector('#new-todo');
     var toggleAllCheckbox = document.querySelector('#toggle-all');
     var footer = document.querySelector('#footer');
     var todoListUl = document.querySelector('#todo-list');
+
+    window.addEventListener('hashchange', function() {
+      var hash = location.hash;
+      var id = hash.match(/(?<=#\/).+(?=\/)/)[0];
+      var filter = hash.match(/\w+$/)[0];
+      this.focusedTodoId = id;
+      this.filter = filter;
+      this.render();
+    }.bind(this));
 
     newTodoInput.addEventListener('keyup', this.create.bind(this));
     toggleAllCheckbox.addEventListener('change', this.toggleAll.bind(this));
@@ -182,32 +215,32 @@ var App = {
         this.expand(e);
       }
     }.bind(this));
-    todoListUl.addEventListener('click', function(e) {
-      if (e.target.tagName === 'A') {
-        var id = e.target.closest('li').dataset.id;
-        this.id = id;
-        this.render();
-      }
-    }.bind(this));
+    // todoListUl.addEventListener('click', function(e) {
+    //   if (e.target.tagName === 'A') {
+    //     var id = e.target.closest('li').dataset.id;
+    //     this.focusedTodoId = id;
+    //     this.render();
+    //   }
+    // }.bind(this));
   },
   render: function() {
     var parent = this.getTodo(this.focusedTodoId);
-    var todos = this.getFilteredTodos(parent.children);
+    var children = this.getFilteredTodos(parent.children);
 
     // Render header and crumbs navigation
     this.renderCrumbs();
     var headline = document.querySelector('h1 span');
     headline.textContent = parent.title;
 
-    // Render children
-    this.renderTodos(parent);
+    // Render todos
+    this.renderTodos(parent, children);
 
     // Hide todos' section element if no todos
     var main = document.querySelector('#main');
-    main.style.display = todos.length > 0 ? 'block' : 'none';
+    main.style.display = children.length > 0 ? 'block' : 'none';
 
     var toggleAllCheckbox = document.querySelector('#toggle-all');
-    toggleAllCheckbox.checked = this.getActiveTodos(parent.children).length === 0;
+    toggleAllCheckbox.checked = this.getActiveTodos(children).length === 0;
 
     // Set focus to the new-todo input
     var newTodoInput = document.querySelector('#new-todo');
@@ -217,10 +250,9 @@ var App = {
     this.renderFooter();
 
     // Store todos in the localStorage
-    util.store('nested-todos', this.todos);
+    util.store('nested-todos', this.nestedTodos);
   },
-  renderTodos: function(parent) {
-    var todos = this.getFilteredTodos(parent.children);
+  renderTodos: function(parent, children) {
     var parentId = parent.id;
     var selector = '#todo-list';
 
@@ -231,12 +263,13 @@ var App = {
     var ul = document.querySelector(selector);
     ul.innerHTML = '';
 
-    todos.forEach(function(todo) {
-      var child = this.todoTemplate(todo);
-      ul.append(child);
+    children.forEach(function(todo) {
+      var todoChildren = this.getFilteredTodos(todo.children);
+      var todoHtml = this.todoTemplate(todo);
+      ul.append(todoHtml);
 
       if (todo.expanded) {
-        this.renderTodos(todo);
+        this.renderTodos(todo, todoChildren);
       }
     }, this);
   },
@@ -247,9 +280,9 @@ var App = {
 
     while (parent) {
       var text = parent.title;
-      var href = parent.id;
+      var href = '#/' + parent.id + '/all';
 
-      if (parent.id === 'home') {
+      if (parent.id === 'root') {
         text = 'Home';
       }
 
@@ -299,11 +332,14 @@ var App = {
     var completedTodos = countCompleted(todos, 0);
     var activeTodos = allTodos - completedTodos;
 
+    // var filter = window.location.hash.match(/\w+$/)[0];
+
     var template = this.footerTemplate({
       activeTodoCount: activeTodos,
       activeTodoWord: util.pluralize(activeTodos, 'item'),
       completedTodos: completedTodos,
       filter: this.filter,
+      // filter: filter,
       parentId: this.focusedTodoId
     });
 
@@ -364,11 +400,18 @@ var App = {
     });
   },
   getFilteredTodos: function(todos) {
+    // var hash = window.location.hash;
+    // var filter = hash.match(/\w+$/)[0];
+    // var focusedTodo = this.getTodo(this.focusedTodoId);
+    // var todos = focusedTodo.children;
+
     if (this.filter === 'active') {
+      // if (filter === 'active') {
       return this.getActiveTodos(todos);
     }
 
     if (this.filter === 'completed') {
+      // if (filter === 'completed') {
       return this.getCompletedTodos(todos);
     }
 
@@ -387,11 +430,12 @@ var App = {
       }, this);
     }
 
-    var root = this.getTodo('home');
+    var root = this.getTodo('root');
     travers.bind(this)(root);
 
+    this.focusedTodoId = 'root';
     this.filter = 'all';
-    this.focusedTodoId = 'home';
+    util.setHash('#/root/all');
     this.render();
   },
   create: function(e) {
@@ -490,17 +534,17 @@ var App = {
   getTodo: function(id) {
     var result;
 
-    function findTodo(todo) {
-      if (todo.id === id) {
-        result = todo;
+    function findTodo(root) {
+      if (root.id === id) {
+        result = root;
       } else {
-        todo.children.forEach(function(child) {
+        root.children.forEach(function(child) {
           findTodo(child);
         });
       }
     }
 
-    findTodo(this.todos);
+    findTodo(this.nestedTodos);
     return result;
   },
 
