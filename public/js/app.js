@@ -223,23 +223,24 @@ var App = {
     // }.bind(this));
   },
   render: function() {
-    var focusedTodo = this.getTodo(this.focusedTodoId);
-    var children = this.getFilteredTodos(focusedTodo.children);
+    var selectedParent = this.getTodo(this.focusedTodoId);
+    var todos = this.getFilteredTodos(selectedParent.children);
 
     // Render header and crumbs navigation
     this.renderCrumbs();
     var headline = document.querySelector('h1 span');
-    headline.textContent = focusedTodo.title;
+    headline.textContent = selectedParent.title;
 
     // Render todos
-    this.renderTodos(focusedTodo, children);
+    this.renderTodos(selectedParent, todos);
+    // this.renderTodos(todos);
 
     // Hide todos' section element if no todos
     var main = document.querySelector('#main');
-    main.style.display = children.length > 0 ? 'block' : 'none';
+    main.style.display = todos.length > 0 ? 'block' : 'none';
 
     var toggleAllCheckbox = document.querySelector('#toggle-all');
-    toggleAllCheckbox.checked = this.getActiveTodos(children).length === 0;
+    toggleAllCheckbox.checked = this.getActiveTodos(todos).length === 0;
 
     // Set focus to the new-todo input
     var newTodoInput = document.querySelector('#new-todo');
@@ -251,6 +252,22 @@ var App = {
     // Store todos in the localStorage
     util.store('nested-todos', this.nestedTodos);
   },
+  // renderTodos: function(todos) {
+  //   if (todos.length === 0) {
+  //     return '';
+  //   }
+
+  //   var parentId = todos[0].parentId;
+  //   var selector = parentId === this.focusedTodoId ?
+  //     '#todo-list' :
+  //     `[data-id='${parentId}'] .children`;
+  //   var $childrenList = document.querySelector(selector);
+  //   $ul.innerHTML = '';
+
+  //   todos.forEach(function(todo) {
+
+  //   }, this);
+  // },
   renderTodos: function(parent, children) {
     var parentId = parent.id;
     var selector = '#todo-list';
@@ -316,10 +333,10 @@ var App = {
       }
       return count;
     }
-    
+
     selectedParent = this.getTodo(this.focusedTodoId);
     childrenCount = countByCondition(selectedParent, 0, function() {
-      return true; 
+      return true;
     });
     completedChildrenCount = countByCondition(selectedParent, 0, function(todo) {
       return todo.completed;
@@ -487,11 +504,15 @@ var App = {
     this.render();
   },
   edit: function(e) {
-    var targetElement = e.target;
-    var closestLiElement = targetElement.closest('li');
-    var inputElement = closestLiElement.querySelector('.edit');
-    closestLiElement.className = 'editing';
-    inputElement.focus();
+    var $closestLi = e.target.closest('li');
+    var $input = $closestLi.querySelector('.edit');
+    $closestLi.className = 'editing';
+
+    // puts caret at end of input
+    var tmpStr = $input.val();
+    $input.val('');
+    $input.val(tmpStr);
+    $input.focus();
   },
   editKeyup: function(e) {
     if (e.which === ENTER_KEY) {
