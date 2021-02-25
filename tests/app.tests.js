@@ -67,13 +67,6 @@ tests({
     });
   },
   '   2. It should retreive todos from the localStorage': function() {
-    // var storedData;
-    // utils.clearApp();
-    // storedData = JSON.parse(localStorage.getItem('nested-todos'));
-    // eq(app.nestedTodos, storedData);
-    // eq(storedData.id, 'home');
-    // eq(storedData.children.length, 0);
-    // eq(storedData.parentId, null);
     localStorage.clear();
     app.nestedTodos = null;
 

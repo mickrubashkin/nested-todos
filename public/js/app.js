@@ -1,4 +1,4 @@
-/* global Router */
+'use strict';
 
 // TODO: Hide App and util into IIFE
 // TODO: It should expand parent todo and display its completed children when clicked 'Completed'
@@ -6,8 +6,7 @@
 
 // MAYBE: Add expandAll button left to the newTodoInput
 // MAYBE: Handle correct view when completed parent with some uncompleted child
-
-'use strict';
+// MAYBE: Don't toggle children when toggling parent
 
 var ENTER_KEY = 13;
 var ESCAPE_KEY = 27;
@@ -224,16 +223,16 @@ var App = {
     // }.bind(this));
   },
   render: function() {
-    var parent = this.getTodo(this.focusedTodoId);
-    var children = this.getFilteredTodos(parent.children);
+    var focusedTodo = this.getTodo(this.focusedTodoId);
+    var children = this.getFilteredTodos(focusedTodo.children);
 
     // Render header and crumbs navigation
     this.renderCrumbs();
     var headline = document.querySelector('h1 span');
-    headline.textContent = parent.title;
+    headline.textContent = focusedTodo.title;
 
     // Render todos
-    this.renderTodos(parent, children);
+    this.renderTodos(focusedTodo, children);
 
     // Hide todos' section element if no todos
     var main = document.querySelector('#main');
@@ -304,49 +303,41 @@ var App = {
     nav.innerHTML = template;
   },
   renderFooter: function() {
-    // Calculates numbers of all todos
-    function countAll(todos, count) {
-      for (var i = 0; i < todos.length; i++) {
-        var todo = todos[i];
-        count++;
-        count = countAll(todo.children, count);
-      }
+    var childrenCount, completedChildrenCount, activeChildrenCount, selectedParent;
 
+    function countByCondition(parent, count, predicate) {
+      var children = parent.children;
+      for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (predicate(child)) {
+          count++;
+        }
+        count = countByCondition(child, count, predicate);
+      }
       return count;
     }
-
-    // Calculates numbers of completed todos
-    function countCompleted(todos, count) {
-      for (var i = 0; i < todos.length; i++) {
-        var todo = todos[i];
-        if (todo.completed) count++;
-        count = countCompleted(todo.children, count);
-      }
-
-      return count;
-    }
-
-    var parent = this.getTodo(this.focusedTodoId);
-    var todos = parent.children;
-    var allTodos = countAll(todos, 0);
-    var completedTodos = countCompleted(todos, 0);
-    var activeTodos = allTodos - completedTodos;
-
-    // var filter = window.location.hash.match(/\w+$/)[0];
+    
+    selectedParent = this.getTodo(this.focusedTodoId);
+    childrenCount = countByCondition(selectedParent, 0, function() {
+      return true; 
+    });
+    completedChildrenCount = countByCondition(selectedParent, 0, function(todo) {
+      return todo.completed;
+    });
+    activeChildrenCount = childrenCount - completedChildrenCount;
 
     var template = this.footerTemplate({
-      activeTodoCount: activeTodos,
-      activeTodoWord: util.pluralize(activeTodos, 'item'),
-      completedTodos: completedTodos,
+      activeTodoCount: activeChildrenCount,
+      activeTodoWord: util.pluralize(activeChildrenCount, 'item'),
+      completedTodos: completedChildrenCount,
       filter: this.filter,
-      // filter: filter,
       parentId: this.focusedTodoId
     });
 
     var footer = document.querySelector('#footer');
 
     // Hides footer if no todos
-    footer.style.display = allTodos > 0 ? 'block' : 'none';
+    footer.style.display = childrenCount > 0 ? 'block' : 'none';
     footer.innerHTML = template;
   },
   toggleAll: function(e) {
@@ -366,8 +357,30 @@ var App = {
     this.render();
   },
   getActiveTodos: function(todos) {
+    // Helper function.
+    // If any todo (or any nested child todo) is not completed, return true.
+    // Otherwise, return false.
+    function hasAnyActiveTodo(todos) {
+      for (var i = 0; i < todos.length; i++) {
+        var todo = todos[i];
+        if (!todo.completed) {
+          return true;
+        }
+        if (todo.children.length > 0) {
+          return hasAnyActiveTodo(todo.children);
+        }
+      }
+
+      return false;
+    }
+
     return todos.filter(function(todo) {
-      return !todo.completed;
+      // If no children and uncompleted, keep it.
+      if (todo.children.length === 0) {
+        return !todo.completed;
+      }
+      // If any uncompleted nested todo, keep parent, neither it's completed or not.
+      return hasAnyActiveTodo(todo.children);
     });
   },
   getCompletedTodos: function(todos) {
@@ -377,11 +390,9 @@ var App = {
     function hasAnyCompletedTodo(todos) {
       for (var i = 0; i < todos.length; i++) {
         var todo = todos[i];
-
         if (todo.completed) {
           return true;
         }
-
         if (todo.children.length > 0) {
           return hasAnyCompletedTodo(todo.children);
         }
@@ -391,30 +402,21 @@ var App = {
     }
 
     return todos.filter(function(todo) {
-      // If no children, filter it.
+      // If no children and completed, keep it.
       if (todo.children.length === 0) {
         return todo.completed;
       }
-      // If any completed nested todo, filter it
+      // If any completed nested todo, keep parent, neither it's completed or not.
       return hasAnyCompletedTodo(todo.children);
     });
   },
   getFilteredTodos: function(todos) {
-    // var hash = window.location.hash;
-    // var filter = hash.match(/\w+$/)[0];
-    // var focusedTodo = this.getTodo(this.focusedTodoId);
-    // var todos = focusedTodo.children;
-
     if (this.filter === 'active') {
-      // if (filter === 'active') {
       return this.getActiveTodos(todos);
     }
-
     if (this.filter === 'completed') {
-      // if (filter === 'completed') {
       return this.getCompletedTodos(todos);
     }
-
     return todos;
   },
   destroyCompleted: function() {
