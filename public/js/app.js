@@ -1,12 +1,11 @@
 'use strict';
 
-// TODO: Hide App and util into IIFE
-// TODO: It should expand parent todo and display its completed children when clicked 'Completed'
+// TODO: It should expand parent and display its completed children when clicked 'Completed'
 // TODO: It should display completed parent with uncompleted child when clicked 'Active'
+// TODO: Handle correct view when completed parent with some uncompleted child (and vice versa)
+// TODO: Hide App and util into IIFE
 
 // MAYBE: Add expandAll button left to the newTodoInput
-// MAYBE: Handle correct view when completed parent with some uncompleted child
-// MAYBE: Don't toggle children when toggling parent
 
 var ENTER_KEY = 13;
 var ESCAPE_KEY = 27;
@@ -418,14 +417,33 @@ var App = {
       return false;
     }
 
-    return todos.filter(function(todo) {
+    var completedTodos = todos.filter(function(todo) {
       // If no children and completed, keep it.
       if (todo.children.length === 0) {
         return todo.completed;
       }
       // If any completed nested todo, keep parent, neither it's completed or not.
+      // Expand parent to display filtered children
       return hasAnyCompletedTodo(todo.children);
+
+      // Iterate todos
+      
     });
+
+    // Expand todos with completed children
+    function expandTodoIfCompletedChildren(todos) {
+      for (var i = 0; i < todos.length; i++) {
+        var todo = todos[i];
+        if (todo.children.length > 0) {
+          todo.expanded = true;
+          return expandTodoIfCompletedChildren(todo.children);
+        }
+      }
+    }
+
+    expandTodoIfCompletedChildren(completedTodos);
+
+    return completedTodos;
   },
   getFilteredTodos: function(todos) {
     if (this.filter === 'active') {
@@ -482,19 +500,7 @@ var App = {
   toggle: function(e) {
     var id = e.target.closest('li').dataset.id;
     var todo = this.getTodo(id);
-    var completed = !todo.completed;
-
-    // Toggle all children todos
-    function deepToggle(todo) {
-      todo.completed = completed;
-      if (todo.children.length > 0) {
-        todo.children.forEach(function(child) {
-          deepToggle(child);
-        });
-      }
-    }
-
-    deepToggle(todo);
+    todo.completed = !todo.completed;
     this.render();
   },
   expand: function(e) {
@@ -509,9 +515,9 @@ var App = {
     $closestLi.className = 'editing';
 
     // puts caret at end of input
-    var tmpStr = $input.val();
-    $input.val('');
-    $input.val(tmpStr);
+    var tmpStr = $input.value;
+    $input.valaue = '';
+    $input.value = tmpStr;
     $input.focus();
   },
   editKeyup: function(e) {
