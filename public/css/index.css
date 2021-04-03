@@ -116,6 +116,10 @@ ul {
 	text-overflow: ellipsis;
 }
 
+#header .completed {
+	text-decoration: line-through;
+}
+
 #header h1 .edit {
 	display: none;
 }
