@@ -5,4 +5,4 @@
 [app](https://nested-todos-app.glitch.me/)
 
 
-[tests](https://mick-nested-todos-tests.glitch.me)
+[tests](/tests/test-runner.html#/root/all)
